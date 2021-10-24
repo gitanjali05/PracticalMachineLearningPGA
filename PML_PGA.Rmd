@@ -1,0 +1,117 @@
+---
+title: "Practical Machine Learning"
+author: "Me"
+date: "24/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading Dataset
+
+```{r}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(RGtk2)
+library(rattle)
+library(randomForest)
+library(gbm)
+library(rpart)
+library(rpart.plot)
+set.seed(9999)
+
+traincsv <- read.csv("C:/Users/Gitu/Desktop/Elective/Practical Machine Learning/PracticalMachineLearningPGA//pml-training.csv")
+testcsv <- read.csv("C:/Users/Gitu/Desktop/Elective/Practical Machine Learning/PracticalMachineLearningPGA/pml-testing.csv")
+
+dim(traincsv)
+dim(testcsv)
+```
+
+## Cleaning Data
+
+### Removing Variables withvnearly zero variance.
+
+```{r}
+non_zero_var <- nearZeroVar(traincsv)
+
+
+org_training_data <- traincsv[,-non_zero_var]
+org_testing_data <- testcsv[,-non_zero_var]
+
+dim(org_training_data)
+
+dim(org_testing_data)
+```
+### Removing Variables with NA values.(threshhold is 95%)
+
+```{r}
+na_val_col <- sapply(org_training_data, function(x) mean(is.na(x))) > 0.95
+
+org_training_data <- org_training_data[,na_val_col == FALSE]
+org_testing_data <- org_testing_data[,na_val_col == FALSE]
+
+dim(org_training_data)
+
+dim(org_testing_data)
+```
+### Removing variables with non-numeric values
+
+```{r}
+org_training_data <- org_training_data[,8:59]
+org_testing_data <- org_testing_data[,8:59]
+
+dim(org_training_data)
+
+dim(org_testing_data)
+```
+
+## Data Partioning
+
+```{r}
+inTrain <- createDataPartition(org_training_data$classe, p=0.6, list=FALSE)
+training <- org_training_data[inTrain,]
+testing <- org_training_data[-inTrain,]
+
+dim(training)
+
+dim(testing)
+```
+
+## Decision Tree Model
+
+```{r}
+training$classe=factor(training$classe)
+testing$classe=factor(testing$classe)
+mod_trees <- train(classe~., data=training, method="rpart")
+DT_prediction<-predict(mod_trees,testing)
+confusionMatrix(DT_prediction,testing$classe)
+fancyRpartPlot(mod_trees$finalModel)
+
+
+```
+
+## Random Forest Model
+
+```{r}
+training$classe=factor(training$classe)
+RF_modfit <- randomForest(classe ~ ., data = training, method = "class")
+RF_prediction <- predict(RF_modfit, testing,type="class")
+cmrf <- confusionMatrix(table(RF_prediction,testing$classe))
+cmrf
+
+
+```
+
+
+## ** Conclusion **
+
+After checking the Overall Statistics data, the Random Forest model has definitely more accuracy than GBM. Hence we will be selecting Random Forest model for final prediction from org_testing_data .
+
+```{r}
+Final_RF_prediction <- predict(RF_modfit, org_testing_data )
+Final_RF_prediction
+```
